@@ -1,33 +1,64 @@
-from minio import Minio
-from dotenv import load_dotenv
 import os
-
-# load_dotenv()
+from minio import Minio
+from minio.error import S3Error
+from dotenv import load_dotenv
 
 def init_minio_client():
-    
-    print("Initializing MinIO client...")
-    print("Environment variables:")
-    print("MINIO_ENDPOINT:", os.getenv("MINIO_ENDPOINT"))
-    print("MINIO_ROOT_USER:", os.getenv("MINIO_ROOT_USER"))
-    print("MINIO_ROOT_PASSWORD:", os.getenv("MINIO_ROOT_PASSWORD"))
-    print("MINIO_REGION:", os.getenv("MINIO_REGION"))
-    print("MINIO_SECURE:", os.getenv("MINIO_SECURE"))
-    print("MINIO_BUCKET:", os.getenv("MINIO_BUCKET"))
+    """
+    Initialize a MinIO client and ensure the specified bucket exists.
 
-    client = Minio(
-        os.getenv("MINIO_ENDPOINT"),
-        access_key=os.getenv("MINIO_ROOT_USER"),
-        secret_key=os.getenv("MINIO_ROOT_PASSWORD"),
-        region=os.getenv("MINIO_REGION"),
-        secure=os.getenv("MINIO_SECURE", "false").lower() == "true"
-    )
+    This function loads environment variables to configure a MinIO client,
+    checks if the specified bucket exists, and creates it if it does not.
+    It validates that all required environment variables are set.
 
-    bucket_name = os.getenv("MINIO_BUCKET")
+    Returns:
+        tuple: (MinIO client instance, bucket name)
 
-    found = client.bucket_exists(bucket_name)
-    print("Found bucket:", found)
-    if not found:
-        client.make_bucket(bucket_name)
-        
-    return client, bucket_name
+    Raises:
+        ValueError: If any required environment variable is not set.
+        S3Error: If an error occurs while interacting with MinIO (e.g., connection failure).
+    """
+    # Load environment variables
+    load_dotenv()
+
+    # Required environment variables
+    required_vars = ["MINIO_ENDPOINT", "MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD", "MINIO_BUCKET"]
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+    # Optional environment variables with defaults
+    region = os.getenv("MINIO_REGION", None)  # Region is optional
+    secure = os.getenv("MINIO_SECURE", "false").lower() == "true"
+
+    try:
+        # Initialize MinIO client
+        client = Minio(
+            endpoint=os.getenv("MINIO_ENDPOINT"),
+            access_key=os.getenv("MINIO_ROOT_USER"),
+            secret_key=os.getenv("MINIO_ROOT_PASSWORD"),
+            region=region,
+            secure=secure
+        )
+
+        # Get bucket name
+        bucket_name = os.getenv("MINIO_BUCKET")
+
+        # Check if bucket exists
+        if client.bucket_exists(bucket_name):
+            print(f"Bucket '{bucket_name}' already exists.")
+        else:
+            # Create bucket if it does not exist
+            client.make_bucket(bucket_name)
+            print(f"Created bucket '{bucket_name}'.")
+
+        return client, bucket_name
+
+    except S3Error as e:
+        # Handle MinIO-specific errors (e.g., connection failure, access denied)
+        print(f"Error initializing MinIO client: {e}")
+        raise
+    except Exception as e:
+        # Handle unexpected errors
+        print(f"Unexpected error initializing MinIO client: {e}")
+        raise
