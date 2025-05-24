@@ -1,37 +1,32 @@
-from minio import Minio
-from dotenv import load_dotenv
 import os
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-load_dotenv()
-from scripts.utils.minio_utils.init_minio import init_minio_client
-from scripts.utils.minio_utils.up_load_to_minio import upload_to_minio
+from dotenv import load_dotenv
+from scripts.utils.minio_utils import init_minio_client, upload_to_minio
 
-client, bucket_name = init_minio_client()
+def ingest_data_to_minio(raw_data_dir="data/raw"):
+    """
+    Ingest raw data files from a local directory to MinIO, overwriting any existing files.
+    
+    Args:
+        raw_data_dir (str): Path to the directory containing raw data files.
+    """
+    # Load environment variables
+    load_dotenv()
 
-print("Start uploading data to MinIO")
+    # Initialize MinIO client
+    client, bucket_name = init_minio_client()
 
-# date_str_array = config.SELLECT_CRAWL_DATE_ARRAY
-date_str_array = ["2025-05-11"]
+    print("Starting data upload to MinIO")
 
-for date_str in date_str_array:
-    # Upload file ShopeeFood
-    local_shopee_dir = f"data/raw/shopeefood/{date_str}"
+    # Check if directory exists
+    if not os.path.exists(raw_data_dir):
+        print(f"Directory {raw_data_dir} does not exist.")
+        return
 
-    if os.path.exists(local_shopee_dir):
-        for filename in os.listdir(local_shopee_dir):
-            local_path = os.path.join(local_shopee_dir, filename)
-            upload_to_minio(client, bucket_name, local_path, "shopeefood", date_str)
-    else:
-        print(f"Directory {local_shopee_dir} does not exist.")
+    # Iterate through files in the directory
+    for filename in os.listdir(raw_data_dir):
+        local_path = os.path.join(raw_data_dir, filename)
+        if os.path.isfile(local_path):  # Ensure it's a file, not a directory
+            upload_to_minio(client, bucket_name, local_path)
 
-
-    # Upload file Google Maps
-    local_google_dir = f"data/raw/googlemaps/{date_str}"
-
-    if os.path.exists(local_google_dir):
-        for filename in os.listdir(local_google_dir):
-            local_path = os.path.join(local_google_dir, filename)
-            upload_to_minio(client, bucket_name, local_path, "googlemaps", date_str)
-    else:
-        print(f"Directory {local_google_dir} does not exist.")
+if __name__ == "__main__":
+    ingest_data_to_minio()
