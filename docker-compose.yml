@@ -62,7 +62,9 @@ services:
       - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
       - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
       - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
-      - ./scripts:/opt/bitnami/spark/scripts
+      - ./data_pipeline:/opt/bitnami/spark/data_pipeline
+      - ./tests:/opt/bitnami/spark/tests
+      - ./data:/opt/bitnami/spark/data
 
   spark-worker:
     image: bitnami/spark:3.4.1
