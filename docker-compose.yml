@@ -1,0 +1,87 @@
+x-minio-common: &minio-common
+  image: quay.io/minio/minio
+  command: server --console-address ":9090" /mnt/data
+  ports:
+    - "9000:9000"
+    - "9090:9090"
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
+
+services:
+
+  minio:
+    <<: *minio-common
+    volumes:
+      - minio-data:/mnt/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=ap-southeast-1
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-server
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9001:9000"  # Native client
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+  spark-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./spark-conf:/opt/bitnami/spark/conf
+      - ./jars/delta-core_2.12-2.4.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.4.0.jar
+      - ./jars/delta-storage-2.4.0.jar:/opt/bitnami/spark/jars/delta-storage-2.4.0.jar
+      - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
+      - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
+      - ./jars/antlr4-runtime-4.9.3.jar:/opt/bitnami/spark/jars/antlr4-runtime-4.9.3.jar
+      - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
+      # - ./processed_data:/opt/bitnami/spark/processed_data
+      # - ./restaurant_data_processing:/opt/bitnami/spark/restaurant_data_processing
+      # - ./global_config.py:/opt/bitnami/spark/global_config.py
+
+  spark-worker:
+    image: bitnami/spark:3.4.1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=1g
+      - SPARK_WORKER_CORES=1
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+    depends_on:
+      - spark-master
+    volumes:
+      - ./spark-conf:/opt/bitnami/spark/conf
+      - spark-logs:/opt/bitnami/spark/logs
+volumes:
+  clickhouse_data:
+  clickhouse_logs:
+  minio-data:
+  spark-logs:
