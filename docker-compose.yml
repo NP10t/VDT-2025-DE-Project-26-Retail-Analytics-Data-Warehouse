@@ -20,7 +20,6 @@ services:
     environment:
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-      - MINIO_REGION=ap-southeast-1
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
@@ -51,21 +50,19 @@ services:
       - SPARK_CONF_DIR=/opt/bitnami/spark/conf
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=${MINIO_REGION}
+      - MINIO_SECURE=${MINIO_SECURE}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_BUCKET=${MINIO_BUCKET}
       - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
     ports:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./spark-conf:/opt/bitnami/spark/conf
-      - ./jars/delta-core_2.12-2.4.0.jar:/opt/bitnami/spark/jars/delta-core_2.12-2.4.0.jar
-      - ./jars/delta-storage-2.4.0.jar:/opt/bitnami/spark/jars/delta-storage-2.4.0.jar
       - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
       - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
-      - ./jars/antlr4-runtime-4.9.3.jar:/opt/bitnami/spark/jars/antlr4-runtime-4.9.3.jar
       - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
-      # - ./processed_data:/opt/bitnami/spark/processed_data
-      # - ./restaurant_data_processing:/opt/bitnami/spark/restaurant_data_processing
-      # - ./global_config.py:/opt/bitnami/spark/global_config.py
+      - ./scripts:/opt/bitnami/spark/scripts
 
   spark-worker:
     image: bitnami/spark:3.4.1
@@ -78,7 +75,6 @@ services:
     depends_on:
       - spark-master
     volumes:
-      - ./spark-conf:/opt/bitnami/spark/conf
       - spark-logs:/opt/bitnami/spark/logs
 volumes:
   clickhouse_data:

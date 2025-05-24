@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from scripts.etl.extract import get_unprocessed_files
 from scripts.etl.transform import process_shopee_data, process_google_data, unify_data
 from scripts.etl.load import save_processed_data_to_minIO, save_processed_data_to_local
-from scripts.utils.minio_utils import init_minio_client
+from scripts.utils.minio_utils.init_minio import init_minio_client
 from scripts.utils.spark_utils.init_spark import init_spark
 
 def main():

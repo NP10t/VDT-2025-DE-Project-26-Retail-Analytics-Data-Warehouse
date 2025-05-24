@@ -1,6 +1,11 @@
 from pyspark.sql.functions import udf
-from schemas.price_range_schema import price_range_schema
+from pyspark.sql.types import StructType, StructField, FloatType
 import re
+
+price_range_schema = StructType([
+    StructField("price_min", FloatType(), True),
+    StructField("price_max", FloatType(), True)
+])
 
 def parse_price_range_str(price_str: str) -> dict:
     if not price_str:
