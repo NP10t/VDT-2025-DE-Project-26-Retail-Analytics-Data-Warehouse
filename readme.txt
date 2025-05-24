@@ -4,11 +4,11 @@ linux
 source venv/bin/activate
 
 window
-venv\Scripts\activate
+venv\data_pipeline\activate
 
-python -m scripts.etl.ingest
+python -m data_pipeline.etl.ingest
 
-python scripts\run_etl.py
+python data_pipeline\run_etl.py
 
 pip install -r requirements.txt 
 
