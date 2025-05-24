@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from scripts.utils.minio_utils import init_minio_client, upload_to_minio
+from data_pipeline.utils.minio_utils import init_minio_client, upload_to_minio
 
 def ingest_data_to_minio(raw_data_dir="data/raw"):
     """
