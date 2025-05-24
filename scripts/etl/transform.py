@@ -1,5 +1,5 @@
 from pyspark.sql.functions import concat_ws, sha2, expr, col, lit, to_timestamp, transform, struct, to_json, flatten, when, size, array, regexp_extract
-from scripts.utils.udfs import parse_price_range_udf
+from scripts.utils.spark_utils.udfs import parse_price_range_udf
 
 def process_google_data(spark, google_path):
     df_google = spark.read.json(google_path)

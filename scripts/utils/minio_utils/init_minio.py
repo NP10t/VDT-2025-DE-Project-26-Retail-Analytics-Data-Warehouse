@@ -2,9 +2,18 @@ from minio import Minio
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
+# load_dotenv()
 
 def init_minio_client():
+    
+    print("Initializing MinIO client...")
+    print("Environment variables:")
+    print("MINIO_ENDPOINT:", os.getenv("MINIO_ENDPOINT"))
+    print("MINIO_ROOT_USER:", os.getenv("MINIO_ROOT_USER"))
+    print("MINIO_ROOT_PASSWORD:", os.getenv("MINIO_ROOT_PASSWORD"))
+    print("MINIO_REGION:", os.getenv("MINIO_REGION"))
+    print("MINIO_SECURE:", os.getenv("MINIO_SECURE"))
+    print("MINIO_BUCKET:", os.getenv("MINIO_BUCKET"))
 
     client = Minio(
         os.getenv("MINIO_ENDPOINT"),
