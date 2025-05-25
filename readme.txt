@@ -18,3 +18,11 @@ bash run_etl.sh
 
 
 docker exec -it clickhouse-server clickhouse-client --user admin --password admin123
+
+docker exec -it clickhouse-server bash
+
+apt-get update && apt-get install -y nano
+nano /etc/clickhouse-server/users.xml
+
+docker exec -it clickhouse-server clickhouse-client
+CREATE TABLE default.test_table (date String, value Int32) ENGINE = MergeTree() ORDER BY date;

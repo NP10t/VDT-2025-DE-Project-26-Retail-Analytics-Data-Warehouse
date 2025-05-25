@@ -29,6 +29,7 @@ services:
       - "9001:9000"  # Native client
     environment:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      # - CLICKHOUSE_DB=vdtdatabase
       - CLICKHOUSE_USER=${CLICKHOUSE_USER}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
@@ -48,12 +49,20 @@ services:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
       - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_REGION=${MINIO_REGION}
       - MINIO_SECURE=${MINIO_SECURE}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_BUCKET=${MINIO_BUCKET}
+
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      # - CLICKHOUSE_DB=vdtdatabase
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_HOST=clickhouse-server
+
       - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
     ports:
       - "8080:8080"
@@ -61,7 +70,17 @@ services:
     volumes:
       - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
       - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
-      - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
+      # - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
+      - ./jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
+      # - ./jars/clickhouse-client-0.7.0.jar:/opt/bitnami/spark/jars/clickhouse-client-0.7.0.jar
+      # - ./jars/clickhouse-http-client-0.7.0.jar:/opt/bitnami/spark/jars/clickhouse-http-client-0.7.0.jar
+      # - ./jars/httpclient5-5.2.1.jar:/opt/bitnami/spark/jars/httpclient5-5.2.1.jar
+      # - ./jars/clickhouse-jdbc-0.6.3-all.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3-all.jar
+      - ./jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
+      # - ./jars/httpcore5-5.2.1.jar:/opt/bitnami/spark/jars/httpcore5-5.2.1.jar
+      - ./jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
+      - ./jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
+
       - ./data_pipeline:/opt/bitnami/spark/data_pipeline
       - ./tests:/opt/bitnami/spark/tests
       - ./data:/opt/bitnami/spark/data
