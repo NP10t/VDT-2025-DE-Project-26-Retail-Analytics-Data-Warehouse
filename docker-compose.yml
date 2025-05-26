@@ -22,7 +22,7 @@ services:
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
 
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: clickhouse/clickhouse-server:25.4.2
     container_name: clickhouse-server
     ports:
       - "8123:8123"  # HTTP interface
@@ -48,12 +48,19 @@ services:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
       - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_REGION=${MINIO_REGION}
       - MINIO_SECURE=${MINIO_SECURE}
       - MINIO_ENDPOINT=minio:9000
       - MINIO_BUCKET=${MINIO_BUCKET}
+
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_HOST=clickhouse-server
+
       - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
     ports:
       - "8080:8080"
@@ -61,8 +68,14 @@ services:
     volumes:
       - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
       - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
-      - ./jars/postgresql-42.7.3.jar:/opt/bitnami/spark/jars/postgresql-42.7.3.jar
-      - ./scripts:/opt/bitnami/spark/scripts
+      - ./jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
+      - ./jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
+      - ./jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
+      - ./jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
+
+      - ./data_pipeline:/opt/bitnami/spark/data_pipeline
+      - ./tests:/opt/bitnami/spark/tests
+      - ./data:/opt/bitnami/spark/data
 
   spark-worker:
     image: bitnami/spark:3.4.1
@@ -76,8 +89,23 @@ services:
       - spark-master
     volumes:
       - spark-logs:/opt/bitnami/spark/logs
+
+  dbeaver:
+    image: dbeaver/cloudbeaver:25.0.5
+    container_name: dbeaver
+    ports:
+      - "8978:8978"
+    environment:
+      - CB_SERVER_URL=http://dbeaver:8978
+      - CB_ADMIN_NAME=${CB_ADMIN_NAME}
+      - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD}
+    depends_on:
+      - clickhouse
+    volumes:
+      - dbeaver_data:/opt/cloudbeaver/workspace
 volumes:
   clickhouse_data:
   clickhouse_logs:
   minio-data:
   spark-logs:
+  dbeaver_data:
