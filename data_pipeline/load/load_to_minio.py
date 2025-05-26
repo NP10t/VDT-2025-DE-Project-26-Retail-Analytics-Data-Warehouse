@@ -1,38 +1,50 @@
-import os
-from pyspark.sql.functions import col, explode
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def save_processed_data_to_minIO(spark, bucket_name, df_unified):
-    output_path = f"s3a://{bucket_name}/processed/restaurants_unified/"
-    
-    df_unified.write \
-        .format("json") \
-        .mode("append") \
-        .save(f"{output_path}")
 
-def save_processed_data_to_local(client, bucket_name, prefix, local_dir):
-    if os.path.exists(local_dir):
-        if os.path.isfile(local_dir):
-            os.remove(local_dir)
+def load_to_clickhouse(client, dim_date, dim_product, dim_customer, fact_sales):
+    """
+    Load transformed data into ClickHouse.
+    """
+    try:
+        # Convert Spark DataFrames to Pandas for ClickHouse insertion
+        dim_date_pd = dim_date.toPandas()
+        dim_product_pd = dim_product.toPandas()
+        dim_customer_pd = dim_customer.toPandas()
+        fact_sales_pd = fact_sales.toPandas()
 
-    os.makedirs(local_dir, exist_ok=True)
+        # Load dim_date
+        if not dim_date_pd.empty:
+            client.execute(
+                "INSERT INTO dim_date (date, year, month, day, quarter) VALUES",
+                dim_date_pd.to_dict('records')
+            )
+            logger.info("Loaded dim_date")
 
-    # Lấy danh sách object
-    objects = client.list_objects(bucket_name, prefix=prefix, recursive=True)
+        # Load dim_product
+        if not dim_product_pd.empty:
+            client.execute(
+                "INSERT INTO dim_product (product_id, product_name) VALUES",
+                dim_product_pd.to_dict('records')
+            )
+            logger.info("Loaded dim_product")
 
-    for obj in objects:
-        if obj.object_name.endswith(".json"):
-            filename = os.path.basename(obj.object_name)
-            local_path = os.path.join(local_dir, filename)
-            client.fget_object(bucket_name, obj.object_name, local_path)
-            print(f"Downloaded: {local_path}")
+        # Load dim_customer
+        if not dim_customer_pd.empty:
+            client.execute(
+                "INSERT INTO dim_customer (customer_id, customer_name) VALUES",
+                dim_customer_pd.to_dict('records')
+            )
+            logger.info("Loaded dim_customer")
 
-def write_to_postgres(df_unified, postgres_config):
-    # Triển khai logic ghi vào PostgreSQL (giả định)
-    df_unified.write \
-        .format("jdbc") \
-        .option("url", postgres_config["url"]) \
-        .option("dbtable", "restaurants") \
-        .option("user", postgres_config["user"]) \
-        .option("password", postgres_config["password"]) \
-        .mode("append") \
-        .save()
+        # Load fact_sales
+        if not fact_sales_pd.empty:
+            client.execute(
+                "INSERT INTO fact_sales (order_id, order_date, product_id, customer_id, quantity, sales_amount) VALUES",
+                fact_sales_pd.to_dict('records')
+            )
+            logger.info("Loaded fact_sales")
+    except Exception as e:
+        logger.error(f"Failed to load data into ClickHouse: {e}")
+        raise

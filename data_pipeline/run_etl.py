@@ -2,9 +2,21 @@
 from data_pipeline import ( 
                            ingest_data_to_minio, 
                            extract_from_minio, 
+                           transform_retail_data,
+                           load_to_clickhouse,
                         )
 from data_pipeline.utils.minio_utils import init_minio_client
 from data_pipeline.utils.spark_utils import init_spark
+from data_pipeline.utils.clickhouse_utils import (
+    init_clickhouse_client,
+    create_clickhouse_tables,
+)
+
+import logging
+logger = logging.getLogger(__name__)
+from dotenv import load_dotenv
+import os
+
 
 
 def main():
@@ -25,11 +37,16 @@ def main():
     
     df.show()  # Display the DataFrame for debugging
 
-    # # Transform data
-    # transformed_df = transform_data(df)
+    clickhouse_client = init_clickhouse_client()
 
-    # # Load transformed data to MinIO
-    # load_to_minio(spark, transformed_df, bucket_name, "processed/sales_by_product.parquet")
+    # Create ClickHouse tables
+    create_clickhouse_tables(clickhouse_client)
+
+    # Transform data
+    dim_date, dim_product, dim_customer, fact_sales = transform_retail_data(df)
+
+    # Load data into ClickHouse
+    load_to_clickhouse(spark, dim_date, dim_product, dim_customer, fact_sales)
 
     # Stop Spark session
     spark.stop()

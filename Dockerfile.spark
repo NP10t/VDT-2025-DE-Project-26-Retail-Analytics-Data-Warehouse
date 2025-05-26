@@ -2,3 +2,4 @@ FROM bitnami/spark:3.4.1
 
 Run pip install minio==7.2.15 
 RUN pip install dotenv
+Run pip install clickhouse-driver
