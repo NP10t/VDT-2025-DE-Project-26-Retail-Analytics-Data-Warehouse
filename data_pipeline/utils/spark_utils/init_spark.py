@@ -35,12 +35,8 @@ def init_spark(app_name="RestaurantDataProcessing"):
         "/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar",
         "/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar",
         "/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar",
-        # "/opt/bitnami/spark/jars/clickhouse-client-0.7.0.jar",
-        # "/opt/bitnami/spark/jars/clickhouse-http-client-0.7.0.jar",
-        # "/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3-all.jar",
+
         "/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar",
-        # "/opt/bitnami/spark/jars/httpclient5-5.2.1.jar",
-        # "/opt/bitnami/spark/jars/httpcore5-5.2.1.jar"
         "/opt/bitnami/spark/jars/httpclient-4.5.13.jar",
         "/opt/bitnami/spark/jars/httpcore-4.4.13.jar",
     ]
