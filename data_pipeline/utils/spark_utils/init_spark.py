@@ -3,9 +3,13 @@ from pyspark.sql import SparkSession
 import os
 from dotenv import load_dotenv
 
+from pyspark.sql import SparkSession
+from dotenv import load_dotenv
+import os
+
 def init_spark(app_name="RestaurantDataProcessing"):
     """
-    Khởi tạo SparkSession với cấu hình MinIO và các JAR cần thiết.
+    Khởi tạo SparkSession với cấu hình MinIO và ClickHouse dependencies.
 
     Args:
         app_name (str): Tên ứng dụng Spark. Mặc định là "RestaurantDataProcessing".
@@ -25,10 +29,23 @@ def init_spark(app_name="RestaurantDataProcessing"):
     if missing_vars:
         raise ValueError(f"Thiếu các biến môi trường: {', '.join(missing_vars)}")
 
-    # Khởi tạo SparkSession với các JAR
+    # Dependencies for ClickHouse
+    # https://clickhouse.com/docs/integrations/apache-spark/spark-native-connector
+    jars = [
+        "/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar",
+        "/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar",
+        "/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar",
+
+        "/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar",
+        "/opt/bitnami/spark/jars/httpclient-4.5.13.jar",
+        "/opt/bitnami/spark/jars/httpcore-4.4.13.jar",
+    ]
+
+    # Khởi tạo SparkSession với các JAR và packages
     builder = SparkSession.builder \
         .appName(app_name) \
-        .config("spark.jars", "/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar,/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar,/opt/bitnami/spark/jars/postgresql-42.7.3.jar")
+        .config("spark.jars", ",".join(jars))
+
     spark = builder.getOrCreate()
     sc = spark.sparkContext
 
