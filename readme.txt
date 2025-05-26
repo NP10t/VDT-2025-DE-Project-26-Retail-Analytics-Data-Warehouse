@@ -21,7 +21,7 @@ docker exec -it clickhouse-server clickhouse-client --user admin --password admi
 
 docker exec -it clickhouse-server bash
 
-apt-get update && apt-get install -y nano
+apt-get update && apt-get install -y nano   
 nano /etc/clickhouse-server/users.xml
 
 docker exec -it clickhouse-server clickhouse-client
