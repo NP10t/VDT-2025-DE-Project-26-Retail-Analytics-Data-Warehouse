@@ -29,6 +29,7 @@ def load_to_clickhouse(spark, dim_date, dim_product, dim_customer, fact_sales):
         spark.conf.set("spark.sql.catalog.clickhouse.database", os.getenv("CLICKHOUSE_DB", "default"))
         spark.conf.set("spark.clickhouse.write.format", os.getenv("CLICKHOUSE_WRITE_FORMAT", "json"))
         spark.conf.set("spark.clickhouse.option.http_version", "1.1")
+        spark.conf.set("spark.clickhouse.option.http_client_impl", "apache4")
 
         logger.info(f"ClickHouse Host: {os.getenv('CLICKHOUSE_HOST')}")
         logger.info(f"ClickHouse User: {os.getenv('CLICKHOUSE_USER')}")
@@ -45,6 +46,8 @@ def load_to_clickhouse(spark, dim_date, dim_product, dim_customer, fact_sales):
         ]
 
         # Write each DataFrame to ClickHouse
+        # Using Spark's native ClickHouse connector
+        # https://clickhouse.com/docs/integrations/apache-spark/spark-native-connector
         for df, table_name in tables:
             logger.info(f"Writing DataFrame to ClickHouse table: {catalog_name}.vdtdatabase.{table_name}")
             df.writeTo(f"{catalog_name}.vdtdatabase.{table_name}").append()
