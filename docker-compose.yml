@@ -35,6 +35,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse-config/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
     ulimits:
       nofile:
         soft: 262144

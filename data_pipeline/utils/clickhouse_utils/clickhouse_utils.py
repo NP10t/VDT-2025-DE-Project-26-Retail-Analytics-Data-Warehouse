@@ -59,6 +59,26 @@ def create_clickhouse_tables(client):
     Create ClickHouse tables for the star schema.
     """
     try:
+        
+        client.execute("""
+        CREATE TABLE IF NOT EXISTS bronze
+        (
+            orderID String,
+            orderdate Date,
+            productID Int32,
+            productName String,
+            customerID String,
+            quantity Int32,
+            salesamount Float64
+        )
+        ENGINE = S3(
+            'http://minio:9000/vdt-data/cleaned_raw/retail_cleaned/*.parquet',
+            'minioadmin',
+            'minioadmin',
+            'Parquet'
+        );
+        """)
+        
         # Create dim_date
         client.execute("""
         CREATE TABLE IF NOT EXISTS dim_date (
