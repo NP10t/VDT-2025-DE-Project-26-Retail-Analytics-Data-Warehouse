@@ -26,3 +26,23 @@ nano /etc/clickhouse-server/users.xml
 
 docker exec -it clickhouse-server clickhouse-client
 CREATE TABLE default.test_table (date String, value Int32) ENGINE = MergeTree() ORDER BY date;
+
+SELECT * FROM system.materialized_views WHERE database = vdtdatabase AND name = 'gold_aggregates_mv';
+
+INSERT INTO vdtdatabase.gold_aggregates
+SELECT
+    orderdate,
+    productID,
+    sumState(quantity) AS total_quantity,
+    sumState(salesamount) AS total_salesamount
+FROM vdtdatabase.gold
+GROUP BY orderdate, productID;
+
+SELECT
+    orderdate,
+    productID,
+    sumMerge(total_quantity) AS total_quantity,
+    sumMerge(total_salesamount) AS total_salesamount
+FROM vdtdatabase.gold_aggregates
+GROUP BY orderdate, productID
+LIMIT 2;
