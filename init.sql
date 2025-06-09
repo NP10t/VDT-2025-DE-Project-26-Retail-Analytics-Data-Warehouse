@@ -7,60 +7,69 @@ CREATE NAMED COLLECTION IF NOT EXISTS minio_config AS
 
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.silver
 (
-    orderID String,
-    orderdate Date,
-    productID String,
+    orderID UInt32,
+    orderDate Date,
+    productID UInt32,
     productName String,
     customerID String,
     quantity Int32,
     salesamount Float64
 )
 ENGINE = ReplacingMergeTree()
-ORDER BY (orderID, orderdate, customerID, productID);
+ORDER BY (orderID, orderDate, customerID, productID);
 
 
 -- Materialized view to populate silver table from raw data
-CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_orders
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales
 (
-    orderID String,
-    orderdate Date,
-    productID String,
+    orderID UInt32,
+    orderDate Date,
+    productID UInt32,
     customerID String,
     quantity Int32,
     salesamount Float64
 )
-ENGINE = ReplacingMergeTree()
-PARTITION BY toYYYYMM(orderdate) -- Cải thiện hiệu suất khi truy vấn hoặc xóa dữ liệu cũ
-ORDER BY (orderID, orderdate, customerID, productID);
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(orderDate)
+ORDER BY (orderID, productID, orderDate, customerID); -- Chủ yếu group by orderID và join productID
+                                                        -- cho nên để orderID, productID trước
+                                                        -- orderDate thì đã có partition và skip index nên để sau
+                                                        -- ít lọc theo customerID nên để cuối và vẫn đánh skip index
+
+-- Thêm skip index cho productID queries
+ALTER TABLE fact_sales ADD INDEX idx_product productID TYPE set(100) GRANULARITY 1; -- Tạo ra 1 set để kiểm tra nhanh input có tồn tại trong set
+ALTER TABLE fact_sales ADD INDEX idx_year toYear(orderDate) TYPE minmax GRANULARITY 1;
+ALTER TABLE fact_sales ADD INDEX idx_month toMonth(orderDate) TYPE minmax GRANULARITY 1;
+ADD INDEX idx_customer_bloom customerID TYPE bloom_filter(0.01) GRANULARITY 1; --
 
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.dim_products
 (
-    productID String,
-    productName String
+    productID UInt32,
+    productName LowCardinality(String) -- https://clickhouse.com/docs/sql-reference/data-types/lowcardinality
 )
 ENGINE = ReplacingMergeTree()
 ORDER BY productID;
 
--- Tìm hiểu được kỹ thuật điền dữ liệu cho 1 khoảng thời gian trước rồi fact trỏ tới dim_date sau
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.dim_date
 (
-    date Date,
+    orderDate Date,
     year UInt16,
     quarter UInt8,
     month UInt8,
     day UInt8,
-    day_of_week String,
-    is_weekend UInt8
+    dayOfWeek UInt8,
+    isWeekend UInt8
 )
-ENGINE = ReplacingMergeTree()
-ORDER BY (date);
+ENGINE = MergeTree()
+PARTITION BY toYYYYMM(orderDate)
+ORDER BY orderDate;
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.fact_orders_mv
-TO ${CLICKHOUSE_DB}.fact_orders
+CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales_mv
+TO ${CLICKHOUSE_DB}.fact_sales
 AS
 SELECT
     orderID,
-    orderdate,
+    orderDate,
     productID,
     customerID,
     quantity,
@@ -73,47 +82,134 @@ AS
 SELECT DISTINCT
     productID,
     productName
-FROM ${CLICKHOUSE_DB}.silver; -- Thêm Disticnt để tránh chèn trùng lặp trước khi Replacing merge tree giải quyết
+FROM ${CLICKHOUSE_DB}.silver; -- Thêm Disticnt để tránh chèn trùng lặp 
+                                -- trước khi Replacing merge tree giải quyết
+                                -- để đỡ tốn IO
 
-CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.dim_date_mv
-TO ${CLICKHOUSE_DB}.dim_date
+INSERT INTO ${CLICKHOUSE_DB}.dim_date
+SELECT
+    orderDate,
+    toYear(orderDate) AS year,
+    toQuarter(orderDate) AS quarter,
+    toMonth(orderDate) AS month,
+    toDayOfMonth(orderDate) AS day,
+    toDayOfWeek(orderDate) AS dayOfWeek,
+    if(toDayOfWeek(orderDate) IN (6, 7), 1, 0) AS isWeekend
+FROM (
+    SELECT addDays(toDate('2024-01-01'), number) as orderDate
+    FROM numbers(365*2)  -- Sinh ra sẵn dữ liệu
+) AS date_table;
+
+
+-- 3. Tạo bảng pre-aggregated cho market basket analysis
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets
+(
+    orderID UInt32,
+    year UInt16,
+    month UInt8,
+    customerID String,
+    product_set Array(UInt32),
+    product_count UInt32,
+    total_amount Float64
+)
+ENGINE = ReplacingMergeTree()
+PARTITION BY (year, month)
+ORDER BY (year, month, orderID, customerID);
+
+-- Materialized view để populate order_product_sets
+CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets
+TO ${CLICKHOUSE_DB}.order_product_sets
 AS
-SELECT DISTINCT
-    orderdate AS date,
-    toYear(orderdate) AS year,
-    toQuarter(orderdate) AS quarter,
-    toMonth(orderdate) AS month,
-    toDayOfMonth(orderdate) AS day,
-    toDayOfWeek(orderdate) AS day_of_week,
-    if(toDayOfWeek(orderdate) IN (6, 7), 1, 0) AS is_weekend
-FROM ${CLICKHOUSE_DB}.silver; -- Thêm Distince để tránh Insert trùng lặp
+SELECT 
+    orderID,
+    toYear(orderDate) as year,
+    toMonth(orderDate) as month,
+    customerID,
+    arraySort(groupArray(productID)) as product_set,
+    count(productID) as product_count,
+    sum(salesamount) as total_amount
+FROM ${CLICKHOUSE_DB}.fact_sales
+GROUP BY year, month, orderID, customerID;
 
--- CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.product_groups
--- (
---     itemset Array(String), -- Danh sách productID trong nhóm
---     co_occurrence_count UInt32, -- Số lần xuất hiện cùng nhau
--- )
+---
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_2
+(
+    orderID UInt32,
+    orderDate DATE,
+    customerID String,
+    product_set Array(UInt32),
+    product_count UInt32,
+    total_amount Float64
+)
+ENGINE = ReplacingMergeTree()
+PARTITION BY toYYYYMM(orderDate)
+ORDER BY (orderDate, orderID, customerID);
 
--- Aggregated table for gold data
--- This table will store pre-aggregated data for faster queries
+-- Materialized view để populate order_product_sets_2
+CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets_2
+TO ${CLICKHOUSE_DB}.order_product_sets_2
+AS
+SELECT 
+    orderID,
+    orderDate,
+    customerID,
+    arraySort(groupArray(productID)) as product_set,
+    count(productID) as product_count,
+    sum(salesamount) as total_amount
+FROM ${CLICKHOUSE_DB}.fact_sales
+GROUP BY orderDate, orderID, customerID;
 
--- CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.gold_aggregates
--- (
---     orderdate Date,
---     productID String,
---     total_quantity AggregateFunction(sum, Int32),
---     total_salesamount AggregateFunction(sum, Float64)
--- )
--- ENGINE = AggregatingMergeTree()
--- ORDER BY (orderdate, productID);
+----- aggregating array 3
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_3
+(
+    orderID UInt32,
+    orderDate Date,
+    customerID String,
+    product_set AggregateFunction(groupArray, UInt32),
+    product_count AggregateFunction(count, UInt32),
+    total_amount AggregateFunction(sum, Float64)
+)
+ENGINE = AggregatingMergeTree()
+PARTITION BY toYYYYMM(orderDate)
+ORDER BY (orderDate, orderID, customerID);
 
--- CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.gold_aggregates_mv
--- TO ${CLICKHOUSE_DB}.gold_aggregates
--- AS
--- SELECT
---     orderdate,
---     productID,
---     sumState(quantity) AS total_quantity,
---     sumState(salesamount) AS total_salesamount
--- FROM ${CLICKHOUSE_DB}.gold
--- GROUP BY orderdate, productID;
+CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets_3
+TO ${CLICKHOUSE_DB}.order_product_sets_3
+AS
+SELECT 
+    orderID,
+    orderDate,
+    customerID,
+    groupArrayState(productID) AS product_set,
+    countState(productID) AS product_count,
+    sumState(salesamount) AS total_amount
+FROM ${CLICKHOUSE_DB}.fact_sales
+GROUP BY orderDate, orderID, customerID;
+
+-- bit map
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales_bitmap
+(
+    orderID UInt32,
+    orderDate DATE,
+    customerID String,
+    product_bitmap AggregateFunction(groupBitmap, UInt32),
+    quantity AggregateFunction(sum, Int32),
+    salesamount AggregateFunction(sum, Float64)
+)
+ENGINE = AggregatingMergeTree()
+PARTITION BY toYYYYMM(orderDate) -- xem lại nếu chỉ tháng 12 hàng năm thì sao
+ORDER BY (orderDate, orderID, customerID);
+
+-- Materialized view cho bitmap
+CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_fact_sales_bitmap
+TO ${CLICKHOUSE_DB}.fact_sales_bitmap
+AS
+SELECT 
+    orderID,
+    orderDate,
+    customerID,
+    groupBitmapState(productID) as product_bitmap,
+    sumState(quantity) as quantity,
+    sumState(salesamount) as salesamount
+FROM ${CLICKHOUSE_DB}.fact_sales
+GROUP BY orderDate, orderID, customerID;

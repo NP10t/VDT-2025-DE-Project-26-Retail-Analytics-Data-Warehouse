@@ -4,13 +4,10 @@ from data_pipeline import (
                            extract_from_minio, 
                            transform_retail_data,
                            load_to_minio_as_parquet,
+                           validate_data
                         )
 from data_pipeline.utils.minio_utils import init_minio_client
 from data_pipeline.utils.spark_utils import init_spark
-from data_pipeline.utils.clickhouse_utils import (
-    init_clickhouse_client,
-    create_clickhouse_tables,
-)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -32,23 +29,24 @@ def main():
     # # Get MinIO bucket name
     _, bucket_name = init_minio_client()
 
-    # # Extract data from MinIO
+    # Extract data from MinIO
     df = extract_from_minio(spark, bucket_name, "raw/retail.csv")
     
-    # df.show()  # Display the DataFrame for debugging
-
-    # clickhouse_client = init_clickhouse_client()
-
-    # Create ClickHouse tables
-    # create_clickhouse_tables(clickhouse_client)
-
+    df.show()  # Display the DataFrame for debugging
+    
     # Transform data
     cleaned_raw_df = transform_retail_data(df)
     
+    if not validate_data(cleaned_raw_df):
+        logger.error("Data validation failed. Aborting pipeline.")
+        spark.stop()
+        return
+    
     load_to_minio_as_parquet(cleaned_raw_df, bucket_name, "retail_cleaned.parquet")
-
-    # # # Load data into ClickHouse
-    # # load_to_clickhouse(spark, dim_date, dim_product, dim_customer, fact_sales)
+    
+    parquet_df = spark.read.parquet(f"s3a://{bucket_name}/cleaned_raw/retail_cleaned")
+    parquet_df.printSchema()
+    parquet_df.select("orderDate").show(10)
 
     # # Stop Spark session
     spark.stop()
