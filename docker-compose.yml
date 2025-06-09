@@ -35,6 +35,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse-config/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
     ulimits:
       nofile:
         soft: 262144
@@ -102,10 +103,9 @@ services:
     depends_on:
       - clickhouse
     volumes:
-      - dbeaver_data:/opt/cloudbeaver/workspace
+      - ./dbeaver_data:/opt/cloudbeaver/workspace
 volumes:
   clickhouse_data:
   clickhouse_logs:
   minio-data:
   spark-logs:
-  dbeaver_data:
