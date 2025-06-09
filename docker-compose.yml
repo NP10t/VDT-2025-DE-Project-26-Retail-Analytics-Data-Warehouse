@@ -103,10 +103,9 @@ services:
     depends_on:
       - clickhouse
     volumes:
-      - dbeaver_data:/opt/cloudbeaver/workspace
+      - ./dbeaver_data:/opt/cloudbeaver/workspace
 volumes:
   clickhouse_data:
   clickhouse_logs:
   minio-data:
   spark-logs:
-  dbeaver_data:

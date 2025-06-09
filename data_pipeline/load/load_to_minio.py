@@ -31,6 +31,7 @@ def load_to_minio_as_parquet(df: DataFrame, bucket_name: str, file_name: str, pr
             .mode("overwrite") \
             .format("parquet") \
             .save(f"s3a://{bucket_name}/{object_name}")
+            
 
         logger.info(f"Data successfully loaded to MinIO bucket '{bucket_name}' at '{object_name}'")
     except Exception as e:
