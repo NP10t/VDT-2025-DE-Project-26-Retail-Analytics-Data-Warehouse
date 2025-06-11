@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.silver
     productID UInt32,
     productName String,
     customerID String,
-    quantity Int32,
+    quantity UInt32,
     salesamount Float64
 )
 ENGINE = ReplacingMergeTree()
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales
     orderDate Date,
     productID UInt32,
     customerID String,
-    quantity Int32,
+    quantity UInt32,
     salesamount Float64
 )
 ENGINE = MergeTree()
@@ -40,7 +40,7 @@ ORDER BY (orderID, productID, orderDate, customerID); -- Chủ yếu group by or
 ALTER TABLE fact_sales ADD INDEX idx_product productID TYPE set(100) GRANULARITY 1; -- Tạo ra 1 set để kiểm tra nhanh input có tồn tại trong set
 ALTER TABLE fact_sales ADD INDEX idx_year toYear(orderDate) TYPE minmax GRANULARITY 1;
 ALTER TABLE fact_sales ADD INDEX idx_month toMonth(orderDate) TYPE minmax GRANULARITY 1;
-ADD INDEX idx_customer_bloom customerID TYPE bloom_filter(0.01) GRANULARITY 1; --
+ALTER TABLE fact_sales ADD INDEX idx_customer_bloom customerID TYPE bloom_filter(0.01) GRANULARITY 1;
 
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.dim_products
 (
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets
 )
 ENGINE = ReplacingMergeTree()
 PARTITION BY (year, month)
-ORDER BY (year, month, orderID, customerID);
+ORDER BY (orderID, year, month, customerID);
 
 -- Materialized view để populate order_product_sets
 CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets
@@ -129,7 +129,7 @@ SELECT
     count(productID) as product_count,
     sum(salesamount) as total_amount
 FROM ${CLICKHOUSE_DB}.fact_sales
-GROUP BY year, month, orderID, customerID;
+GROUP BY orderID, year, month, customerID;
 
 ---
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_2
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_2
 )
 ENGINE = ReplacingMergeTree()
 PARTITION BY toYYYYMM(orderDate)
-ORDER BY (orderDate, orderID, customerID);
+ORDER BY (orderID, orderDate, customerID);
 
 -- Materialized view để populate order_product_sets_2
 CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets_2
@@ -157,7 +157,7 @@ SELECT
     count(productID) as product_count,
     sum(salesamount) as total_amount
 FROM ${CLICKHOUSE_DB}.fact_sales
-GROUP BY orderDate, orderID, customerID;
+GROUP BY orderID, orderDate, customerID;
 
 ----- aggregating array 3
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_3
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.order_product_sets_3
 )
 ENGINE = AggregatingMergeTree()
 PARTITION BY toYYYYMM(orderDate)
-ORDER BY (orderDate, orderID, customerID);
+ORDER BY (orderID, orderDate, customerID);
 
 CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_order_product_sets_3
 TO ${CLICKHOUSE_DB}.order_product_sets_3
@@ -184,7 +184,7 @@ SELECT
     countState(productID) AS product_count,
     sumState(salesamount) AS total_amount
 FROM ${CLICKHOUSE_DB}.fact_sales
-GROUP BY orderDate, orderID, customerID;
+GROUP BY orderID, orderDate, customerID;
 
 -- bit map
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales_bitmap
@@ -193,12 +193,12 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales_bitmap
     orderDate DATE,
     customerID String,
     product_bitmap AggregateFunction(groupBitmap, UInt32),
-    quantity AggregateFunction(sum, Int32),
+    quantity AggregateFunction(sum, UInt32),
     salesamount AggregateFunction(sum, Float64)
 )
 ENGINE = AggregatingMergeTree()
-PARTITION BY toYYYYMM(orderDate) -- xem lại nếu chỉ tháng 12 hàng năm thì sao
-ORDER BY (orderDate, orderID, customerID);
+PARTITION BY toYYYYMM(orderDate)
+ORDER BY (orderID, orderDate, customerID);
 
 -- Materialized view cho bitmap
 CREATE MATERIALIZED VIEW ${CLICKHOUSE_DB}.mv_fact_sales_bitmap
@@ -212,4 +212,4 @@ SELECT
     sumState(quantity) as quantity,
     sumState(salesamount) as salesamount
 FROM ${CLICKHOUSE_DB}.fact_sales
-GROUP BY orderDate, orderID, customerID;
+GROUP BY orderID, orderDate, customerID;
