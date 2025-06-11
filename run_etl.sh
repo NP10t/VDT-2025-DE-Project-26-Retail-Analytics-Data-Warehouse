@@ -15,9 +15,15 @@ echo "▶️  Step 2: Loading processed to processed_data folder and data of the
 
 # docker exec project_viettel-spark-master-1 spark-submit data_pipeline/run_etl.py
 
+# docker exec project_viettel-spark-master-1 spark-submit \
+#     --master spark://spark-master:7077 \
+#     --deploy-mode client \
+#     data_pipeline/run_etl.py
+
 docker exec project_viettel-spark-master-1 spark-submit \
-    --master spark://spark-master:7077 \
-    --deploy-mode client \
-    data_pipeline/run_etl.py
+  --master spark://spark-master:7077 \
+  --executor-memory 512m \
+  --executor-cores 1 \
+  data_pipeline/run_etl.py
 
 echo "✅  Step 2 complete, go to the processed_data and images_table_data folders to view the data."
