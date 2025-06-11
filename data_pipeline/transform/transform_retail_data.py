@@ -6,17 +6,18 @@ logger = logging.getLogger(__name__)
 
 def transform_retail_data(df):
     """
-    Transform dữ liệu bán lẻ: đổi tên cột, chuyển đổi orderID thành số, và orderDate sang DateType.
+    Transforms retail data: renames columns, converts orderID to numeric, and orderDate to DateType.
 
     Args:
-        df: Spark DataFrame đầu vào.
+        df: Input Spark DataFrame.
 
     Returns:
-        Spark DataFrame đã được transform.
+        Spark DataFrame after transformation.
 
     Raises:
-        Exception: Nếu transform thất bại.
+        Exception: If the transformation fails.
     """
+
     
     try:
         return df.withColumnRenamed("orderdate", "orderDate") \

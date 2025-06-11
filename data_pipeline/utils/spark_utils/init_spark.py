@@ -7,23 +7,24 @@ from pyspark.sql import SparkSession
 from dotenv import load_dotenv
 import os
 
-def init_spark(app_name="RestaurantDataProcessing"):
+def init_spark(app_name="Project-26-VDT-2025-Data-Engineering"):
     """
-    Khởi tạo SparkSession với cấu hình MinIO và ClickHouse dependencies.
+        Initialize a SparkSession with configurations for MinIO and ClickHouse dependencies.
 
-    Args:
-        app_name (str): Tên ứng dụng Spark. Mặc định là "RestaurantDataProcessing".
+        Args:
+            app_name (str): The name of the Spark application. Default is "Project-26-VDT-2025-Data-Engineering".
 
-    Returns:
-        SparkSession: Phiên Spark đã được cấu hình.
+        Returns:
+            SparkSession: A configured Spark session.
 
-    Raises:
-        ValueError: Nếu thiếu biến môi trường MINIO_ROOT_USER hoặc MINIO_ROOT_PASSWORD.
+        Raises:
+            ValueError: If the environment variables MINIO_ROOT_USER or MINIO_ROOT_PASSWORD are missing.
     """
-    # Load biến môi trường từ .env
+
+    # Load environment variables from .env file
     load_dotenv()
 
-    # Kiểm tra biến môi trường cần thiết
+    # Check for required environment variables
     required_vars = ["MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD"]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
     if missing_vars:
@@ -41,7 +42,7 @@ def init_spark(app_name="RestaurantDataProcessing"):
         "/opt/bitnami/spark/jars/httpcore-4.4.13.jar",
     ]
 
-    # Khởi tạo SparkSession với các JAR và packages
+    # Initialize SparkSession with the specified application name and JARs
     builder = SparkSession.builder \
         .appName(app_name) \
         .config("spark.jars", ",".join(jars))
@@ -49,7 +50,7 @@ def init_spark(app_name="RestaurantDataProcessing"):
     spark = builder.getOrCreate()
     sc = spark.sparkContext
 
-    # Cấu hình MinIO
+    # Set configurations for MinIO
     sc._jsc.hadoopConfiguration().set("fs.s3a.access.key", os.getenv("MINIO_ROOT_USER"))
     sc._jsc.hadoopConfiguration().set("fs.s3a.secret.key", os.getenv("MINIO_ROOT_PASSWORD"))
     sc._jsc.hadoopConfiguration().set("fs.s3a.endpoint", "http://minio:9000")

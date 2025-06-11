@@ -1,6 +1,6 @@
-# NGUYEN PHUC
-# VIETTEL DIGITAL TAILENT 2025 PROJECT
-# DATA WAREHOUSE FOR ASSOCIATION RULE MINING
+## NGUYEN PHUC
+## VIETTEL DIGITAL TAILENT 2025 PROJECT
+## DATA WAREHOUSE FOR ASSOCIATION RULE MINING
 
 ### Create Environment (for test optional)
 ``` bash
@@ -41,7 +41,7 @@ FROM s3(
 );
 ```
 Configuration
-Add <named_collection_control>1</named_collection_control> into configs/clickhouse-config/users.d:
+Add <named_collection_control>1</named_collection_control> into `configs/clickhouse-config/users.d`:
 ``` xml
 <clickhouse>
   <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->
