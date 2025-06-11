@@ -50,6 +50,20 @@ GROUP BY fs.orderID
 HAVING COUNT(productID) = 2
 );
 
+-- hyperloglog
+-- 1 row in set. Elapsed: 0.037 sec. Processed 84.31 thousand rows, 675.88 KB (2.26 million rows/s., 18.12 MB/s.)
+-- Peak memory usage: 271.13 KiB.
+SELECT count() / (SELECT uniqHLL12(orderID) FROM fact_sales WHERE toYYYYMM(orderDate) = 202407)
+FROM (
+    SELECT orderID 
+    FROM fact_sales fs
+    JOIN dim_products dp ON fs.productID = dp.productID
+    WHERE dp.productName IN ('Eggs', 'Cheese')
+    AND toYYYYMM(orderDate) = 202407
+    GROUP BY fs.orderID
+    HAVING COUNT(productID) = 2
+);
+
 -- process 42.1k dòng (42k tương ứng với where toYYYYMM(orderDate) = 202407 và 0.1*100 = 100 là size product_dim) 
 -- chứng tỏ phép lọc productName đã không được áp dụng cho cả 2 truy ván trên
 -- 42105 rows in set. Elapsed: 0.039 sec. Processed 42.20 thousand rows, 2.82 MB (1.09 million rows/s., 73.00 MB/s.)
@@ -61,8 +75,8 @@ WHERE toYYYYMM(orderDate) = 202407
 
 -- Conventional_Query
 -- Processed rất lớn
--- 1 row in set. Elapsed: 0.069 sec. Processed 390.25 thousand rows, 3.12 MB (5.66 million rows/s., 45.35 MB/s.)
--- Peak memory usage: 2.71 MiB.
+-- 1 row in set. Elapsed: 0.078 sec. Processed 84.41 thousand rows, 678.08 KB (1.08 million rows/s., 8.65 MB/s.)
+-- Peak memory usage: 32.77 MiB.
 WITH target_products AS (
     SELECT productID
     FROM dim_products
@@ -78,14 +92,14 @@ SELECT (
         SELECT fs.orderID
         FROM fact_sales fs
         INNER JOIN target_products tp ON fs.productID = tp.productID
-        where year(fs.orderDate) = 2025
+        where toYYYYMM(orderDate) = 202407
         GROUP BY fs.orderID
         HAVING count(DISTINCT fs.productID) = (SELECT target_count FROM product_count)
     )
 ) / (
     SELECT count(DISTINCT orderID) AS total_order_count
     FROM fact_sales fs
-    where year(fs.orderDate) = 2025
+    where toYYYYMM(orderDate) = 202407
 );
 
 -- Bitmap_AggregatingMT
@@ -139,8 +153,8 @@ with target_ids as (
 
 -- Array_AggregatingMT_YYYYMM
 -- processed bé, peak bé
--- 1 row in set. Elapsed: 0.045 sec. Processed 7.74 thousand rows, 865.93 KB (171.74 thousand rows/s., 19.21 MB/s.)
--- Peak memory usage: 249.52 KiB.
+-- 1 row in set. Elapsed: 0.024 sec. Processed 7.74 thousand rows, 866.04 KB (323.87 thousand rows/s., 36.23 MB/s.)        
+-- Peak memory usage: 249.53 KiB.
 WITH target_product_ids AS (
     SELECT groupArray(productID) as ids
     FROM dim_products
