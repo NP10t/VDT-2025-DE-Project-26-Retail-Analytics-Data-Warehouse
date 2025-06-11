@@ -14,6 +14,16 @@ Windows:
 ``` bash
 venv\Scripts\activate
 ```
+
+### Initilize all the services
+```bash
+docker-compose up -d
+```
+Run spark with multiple worker:
+
+```bash
+docker-compose up --scale spark-worker=2
+```
 ### Ingest to MinIO, Spark Extract, Transform, Validate, Load to Parquet files
 ``` bash
 bash run_etl.sh
