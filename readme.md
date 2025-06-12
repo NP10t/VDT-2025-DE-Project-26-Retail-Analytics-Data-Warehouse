@@ -51,7 +51,7 @@ FROM s3(
 );
 ```
 Configuration
-Add <named_collection_control>1</named_collection_control> into `configs/clickhouse-config/users.d`:
+Add `<named_collection_control>1</named_collection_control>` into `configs/clickhouse-config/users.d`:
 ``` xml
 <clickhouse>
   <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->

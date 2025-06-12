@@ -1,0 +1,32 @@
+FROM apache/superset:3.1.0
+
+USER root
+
+# Install netcat for health checks
+RUN apt-get update && apt-get install -y netcat-traditional && rm -rf /var/lib/apt/lists/*
+
+# Create directory for configuration
+RUN mkdir -p /app/pythonpath
+
+# Copy initialization script and set permission while still root
+COPY ./superset_init.sh /app/docker-init.sh
+RUN chmod +x /app/docker-init.sh
+
+# Update pip to avoid warnings
+RUN pip install --upgrade pip
+
+# Switch to non-root user
+USER superset
+
+# Install compatible versions
+RUN pip install --no-cache-dir \
+    SQLAlchemy==1.4.53 \
+    clickhouse-sqlalchemy==0.2.4 \
+    clickhouse-driver==0.2.6 \
+    flask-caching==2.0.2 \
+    redis \
+    "celery[redis]"
+
+EXPOSE 8088
+
+CMD ["/app/docker-init.sh"]
