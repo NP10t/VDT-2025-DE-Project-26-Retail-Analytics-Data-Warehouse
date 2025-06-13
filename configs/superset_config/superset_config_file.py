@@ -18,7 +18,12 @@ CACHE_CONFIG = {
 # Cấu hình Celery cho truy vấn bất đồng bộ
 class CeleryConfig:
     BROKER_URL = 'redis://redis:6379/0'
-    CELERY_IMPORTS = ('superset.sql_lab',)
+    CELERY_IMPORTS = (
+        "superset.sql_lab",
+        "superset.tasks.scheduler",
+        "superset.tasks.thumbnails",
+        "superset.tasks.cache",
+    )
     CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
     CELERYD_LOG_LEVEL = 'DEBUG'
     CELERYD_PREFETCH_MULTIPLIER = 1
@@ -43,8 +48,8 @@ FEATURE_FLAGS = {
 }
 
 # Khóa bí mật
-SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY', 'zX9yW3kJqP8mL2vN6rT5uF4gH7jK0nQ1wE3cV2bR')
-JWT_SECRET = os.environ.get('JWT_SECRET', '3J9yW3kJqP8mL2vN6rT5uF4gH7jK0nQ1wE3cV2bR9xZ8mP7qL6kJ5vN4tR3u')
+SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY')
+JWT_SECRET = os.environ.get('JWT_SECRET')
 
 # Cấu hình SQL Lab
 SQLLAB_CTAS_NO_LIMIT = True

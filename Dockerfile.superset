@@ -25,7 +25,8 @@ RUN pip install --no-cache-dir \
     clickhouse-driver==0.2.6 \
     flask-caching==2.0.2 \
     redis \
-    "celery[redis]"
+    celery \
+    pillow
 
 EXPOSE 8088
 
