@@ -19,7 +19,6 @@ ENGINE = ReplacingMergeTree()
 ORDER BY (orderID, orderDate, customerID, productID);
 
 
--- Materialized view to populate silver table from raw data
 CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales
 (
     orderID UInt32,

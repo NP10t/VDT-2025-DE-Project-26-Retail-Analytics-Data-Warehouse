@@ -4,14 +4,14 @@
 
 set -e # Dừng script nếu bất kỳ lệnh nào thất bại
 
-# echo "▶️  Step 1: Uploading data to datalake..."
+echo "▶️  Step 1: Uploading retails.csv to MinIO..."
 # python collect_data/upload_data_to_minIO.py
 # python -m data_pipeline.ingest.ingest
 
 
 echo "✅  Step 1 complete."
 
-echo "▶️  Step 2: Loading processed to processed_data folder and data of the images table to the images_table_data folder"
+echo "▶️  Step 2: Extracting, transforming, validating, and save as parquet file with Spark..."
 
 # docker exec project_viettel-spark-master-1 spark-submit data_pipeline/run_etl.py
 
@@ -26,4 +26,4 @@ docker exec project_viettel-spark-master-1 spark-submit \
   --executor-cores 1 \
   data_pipeline/run_etl.py
 
-echo "✅  Step 2 complete, go to the processed_data and images_table_data folders to view the data."
+echo "✅  Step 2 complete, processed data saved to MinIO as parquet file at vdt-data/cleaned_raw/retail_cleaned"

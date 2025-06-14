@@ -1,28 +1,33 @@
 SELECT * from dim_products;
 
 -- Silver
--- processed đủ 500 ngàn dòng (toàn bộ bảng)
--- 1 row in set. Elapsed: 0.047 sec. Processed 500.00 thousand rows, 11.45 MB (10.55 million rows/s., 241.56 MB/s.)
--- Peak memory usage: 452.98 KiB.
+
+-- 1 row in set. Elapsed: 0.080 sec. Processed 12.35 thousand rows, 282.48 KB (153.60 thousand rows/s., 3.51 MB/s.)
+-- Peak memory usage: 172.13 KiB.
 SELECT 
     countIf(product_count = 2) / count() as ratio
 FROM (
     SELECT 
         orderID,
-        count(CASE WHEN productName IN ('Eggs', 'Cheese') THEN 1 END) as product_count
+        count(
+            CASE WHEN productName IN ('Eggs', 'Cheese') 
+            THEN 1 END
+            ) as product_count
     FROM silver
-    WHERE toYYYYMM(orderDate) = 202407
+    WHERE toYYYYMM(orderDate) = 202405
     GROUP BY orderID
 );
+-- 1 row in set. Elapsed: 0.047 sec. Processed 500.00 thousand rows, 
+-- 11.45 MB (10.55 million rows/s., 241.56 MB/s.)
+-- Peak memory usage: 452.98 KiB.
 
 -- Brief_query
 -- NOTE: Tuy query ngắn gọn nhưng không lọc productName trước khi join, rất lãng phi, 
 -- nhưng với dữ liệu nhỏ thì không thấy được
 -- Nhưng lại
--- 1 row in set. Elapsed: 0.028 sec. Processed 42.20 thousand rows, 423.14 KB (1.52 million rows/s., 15.19 MB/s.)
--- Peak memory usage: 181.79 KiB.
--- 42k vì chỉ quét 1 lần đã chia được và count cái mẫu được luôn rồi
--- Vấn đề là phải tính cái mẫu nên processed >= 42k => tính trước cái mẫu bằng materialize view
+-- 1 row in set. Elapsed: 0.022 sec. Processed 12.45 thousand rows,
+-- 125.73 KB (562.89 thousand rows/s., 5.68 MB/s.)
+-- Peak memory usage: 185.82 KiB.
 SELECT 
     countIf(product_count = 2) / count() as ratio
 FROM (
@@ -31,13 +36,47 @@ FROM (
         count(CASE WHEN dp.productName IN ('Eggs', 'Cheese') THEN 1 END) as product_count
     FROM fact_sales fs
     INNER JOIN dim_products dp ON dp.productID = fs.productID
-    WHERE toYYYYMM(orderDate) = 202407
+    WHERE toYYYYMM(orderDate) = 202405
     GROUP BY fs.orderID
 );
 
+-- Tối ưu
+-- 1 row in set. Elapsed: 0.038 sec. Processed 24.81 thousand rows, 199.85 KB (651.77 thousand rows/s., 5.25 MB/s.)
+-- Peak memory usage: 275.48 KiB.
+select countIf(matched_item_cnt = 2) * 100.0 / (
+                  select uniqHLL12(orderID) 
+                  from fact_sales 
+                  where toYYYYMM(orderDate) = 202405
+                  )
+from
+(select count(*) as matched_item_cnt
+from fact_sales fs
+join dim_products dp on fs.productID = dp.productID
+where toYYYYMM(orderDate) = 202405
+and dp.productName In ('Cheese', 'Eggs')
+group by fs.orderID ) as groupOrder
+-- 1 row in set. Elapsed: 0.047 sec. Processed 500.00 thousand rows, 
+-- 11.45 MB (10.55 million rows/s., 241.56 MB/s.)
+-- Peak memory usage: 452.98 KiB.
+
+
+-- không hyperloglog
+select countIf(matched_item_cnt = 2) * 100.0 / (
+                  select count(distinct orderID) 
+                  from fact_sales 
+                  where toYYYYMM(orderDate) = 202405
+                  )
+from
+(select count(*) as matched_item_cnt
+from fact_sales fs
+join dim_products dp on fs.productID = dp.productID
+where toYYYYMM(orderDate) = 202405
+and dp.productName In ('Cheese', 'Eggs')
+group by fs.orderID ) as groupOrder
+
 -- Không hiểu sao Processed lại lớn
--- 1 row in set. Elapsed: 0.053 sec. Processed 84.31 thousand rows, 675.77 KB (1.60 million rows/s., 12.83 MB/s.)
--- Peak memory usage: 300.91 KiB.
+-- 1 row in set. Elapsed: 0.042 sec. Processed 54.56 thousand rows, 378.36 KB (1.29 million rows/s., 8.93 MB/s.)
+-- Peak memory usage: 301.70 KiB.
 -- 84k là vì quét 2 lần, 1 lần để phép chia (42k), 1 lần để count cái mẫu số (42k)
 select count() / (SELECT COUNT(DISTINCT orderID) FROM fact_sales where toYYYYMM(orderDate) = 202407)
 FROM (
@@ -45,7 +84,7 @@ SELECT orderID
 FROM fact_sales fs
 JOIN dim_products dp ON fs.productID = dp.productID
 WHERE dp.productName in ('Eggs', 'Cheese')
-AND toYYYYMM(orderDate) = 202407
+AND toYYYYMM(orderDate) = 202405
 GROUP BY fs.orderID
 HAVING COUNT(productID) = 2
 );
