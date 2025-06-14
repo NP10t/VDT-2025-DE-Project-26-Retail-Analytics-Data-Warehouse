@@ -38,7 +38,7 @@ docker exec -it clickhouse-server clickhouse-client --user <username> --password
 ```
 or
 ``` bash
-bashdocker exec -it clickhouse-server clickhouse-client
+docker exec -it clickhouse-server clickhouse-client
 ```
 ### Load Data from Parquet to Silver Layer at ClickHouse
 ``` sql
@@ -51,7 +51,7 @@ FROM s3(
 );
 ```
 Configuration
-Add <named_collection_control>1</named_collection_control> into `configs/clickhouse-config/users.d`:
+Add `<named_collection_control>1</named_collection_control>` into `configs/clickhouse-config/users.d`:
 ``` xml
 <clickhouse>
   <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->
