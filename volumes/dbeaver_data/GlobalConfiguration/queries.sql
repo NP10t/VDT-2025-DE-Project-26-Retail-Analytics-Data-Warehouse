@@ -280,3 +280,46 @@ FROM (
 GROUP BY product_1, product_2
 ORDER BY order_count DESC
 LIMIT 10;
+
+
+WITH order_products AS (
+    SELECT DISTINCT orderID, productID
+    FROM fact_sales
+    WHERE toYYYYMM(orderDate) = 202405
+)
+SELECT 
+    a.orderID as orderID1,
+    b.orderID as orderID2,
+    COUNT(*) as common_products,
+    arraySort(groupArray(a.productID)) as shared_products,
+    sipHash64(arrayStringConcat(arraySort(groupArray(a.productID)), ',')) AS shared_products_hash
+FROM order_products a
+INNER JOIN order_products b 
+    ON a.productID = b.productID 
+    AND a.orderID < b.orderID
+GROUP BY a.orderID, b.orderID
+HAVING common_products > 2
+ORDER BY shared_products_hash
+LIMIT 20;
+
+
+WITH order_products AS (
+    SELECT DISTINCT orderID, productID
+    FROM fact_sales
+    WHERE toYYYYMM(orderDate) = 202405
+), common_products as(
+SELECT 
+    a.orderID as orderID1,
+    b.orderID as orderID2,
+    COUNT(*) as common_products_cnt,
+    arraySort(groupArray(a.productID)) as shared_products
+FROM order_products a
+INNER JOIN order_products b 
+    ON a.productID = b.productID 
+    AND a.orderID < b.orderID
+GROUP BY a.orderID, b.orderID
+HAVING common_products_cnt > 1
+)
+select count(orderID1), shared_products
+from common_products
+group by shared_products
