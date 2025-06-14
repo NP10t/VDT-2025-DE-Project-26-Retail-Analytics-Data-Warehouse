@@ -175,3 +175,108 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.product_pairs
 )
 ENGINE = AggregatingMergeTree()
 ORDER BY (product1_id, product2_id);
+
+
+-- case when 
+select sum(satisfied) from
+(
+select case when hasAll(groupArrayMerge(product_set), (select groupArray(productID) as ids from dim_products 
+where productName in ('Cheese', 'Yogurt') ) ) then 3 else 0 end satisfied
+from order_product_sets_3
+where toYYYYMM(orderDate) = 202405
+group by orderID
+) 
+
+
+
+select countIf(matched_item_cnt = 2) * 100.0 / (
+                  select uniqHLL12(orderID) 
+                  from fact_sales 
+                  where toYYYYMM(orderDate) = 202405
+                  )
+from
+(select count(*) as matched_item_cnt
+from fact_sales fs
+join dim_products dp on fs.productID = dp.productID
+where toYYYYMM(orderDate) = 202405
+and dp.productName In ('Cheese', 'Eggs')
+group by fs.orderID ) as groupOrder
+
+
+
+select sum(satisfied) * 100 /count() from
+(
+select hasAll(groupArrayMerge(product_set), 
+                ( select groupArray(productID) as ids 
+                from dim_products 
+                where productName in ['Cheese', 'Eggs']  ) as xx
+              ) satisfied
+from order_product_sets_3
+where toYYYYMM(orderDate) = 202405
+group by orderID
+)
+
+
+
+select countIf(matched_item_cnt = 2) * 100.0 / (
+                  select uniqHLL12(orderID) 
+                  from fact_sales 
+                  where toYYYYMM(orderDate) = 202405
+                  )
+from
+(select count(*) as matched_item_cnt
+from fact_sales fs
+join dim_products dp on fs.productID = dp.productID
+where toYYYYMM(orderDate) = 202405
+and dp.productName In ('Cheese', 'Eggs')
+group by fs.orderID ) as groupOrder
+
+
+
+SELECT
+    LEAST(t1.productName, t2.productName) AS product_1,
+    GREATEST(t1.productName, t2.productName) AS product_2,
+    COUNT(DISTINCT fs1.orderID) AS order_count,
+    COUNT(DISTINCT fs1.orderID) * 100.0 / (
+        SELECT COUNT(DISTINCT orderID)
+        FROM fact_sales
+        WHERE toYYYYMM(orderDate) = 202405
+    ) AS percentage
+FROM fact_sales fs1
+JOIN dim_products t1 ON fs1.productID = t1.productID
+JOIN fact_sales fs2 ON fs1.orderID = fs2.orderID AND fs1.productID < fs2.productID
+JOIN dim_products t2 ON fs2.productID = t2.productID
+WHERE toYYYYMM(fs1.orderDate) = 202405
+GROUP BY LEAST(t1.productName, t2.productName), GREATEST(t1.productName, t2.productName)
+HAVING order_count >= 10
+ORDER BY order_count DESC
+LIMIT 10;
+
+
+SELECT
+    CONCAT(product_1, ' + ', product_2) AS product_pair,
+    MAX(order_count) AS order_count,
+    MAX(percentage) AS percentage
+FROM (
+    SELECT
+        LEAST(t1.productName, t2.productName) AS product_1,
+        GREATEST(t1.productName, t2.productName) AS product_2,
+        COUNT(DISTINCT fs1.orderID) AS order_count,
+        COUNT(DISTINCT fs1.orderID) * 100.0 / (
+            SELECT COUNT(DISTINCT orderID)
+            FROM fact_sales
+            WHERE toYYYYMM(orderDate) = 202405
+        ) AS percentage
+    FROM fact_sales fs1
+    JOIN dim_products t1 ON fs1.productID = t1.productID
+    JOIN fact_sales fs2 ON fs1.orderID = fs2.orderID AND fs1.productID < fs2.productID
+    JOIN dim_products t2 ON fs2.productID = t2.productID
+    WHERE toYYYYMM(fs1.orderDate) = 202405
+    GROUP BY 
+        LEAST(t1.productName, t2.productName),
+        GREATEST(t1.productName, t2.productName)
+    HAVING order_count >= 10
+) AS subquery
+GROUP BY product_1, product_2
+ORDER BY order_count DESC
+LIMIT 10;

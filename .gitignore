@@ -2,5 +2,6 @@
 venv
 __pycache__
 data/raw/retail.csv
-jars/*
-nhap.py
+volumes/spark_jars/*
+commands.sh
+configs/clickhouse-config/users.d/default-user.xml

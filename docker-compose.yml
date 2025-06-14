@@ -1,20 +1,65 @@
-x-minio-common: &minio-common
-  image: quay.io/minio/minio
-  command: server --console-address ":9090" /mnt/data
-  ports:
-    - "9000:9000"
-    - "9090:9090"
-  healthcheck:
-    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-    interval: 30s
-    timeout: 20s
-    retries: 3
-
-
 services:
+  # Redis cho Superset
+  redis:
+    image: redis:7-alpine
+    container_name: superset_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  # PostgreSQL cho Superset metadata
+  postgres:
+    image: postgres:15
+    container_name: superset_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # Superset
+  superset:
+    build:
+      context: ./configs/superset/
+      dockerfile: Dockerfile.superset
+    container_name: superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      clickhouse:
+        condition: service_started
+    volumes:
+      - ./configs/superset/superset_config.py:/app/pythonpath/superset_config.py
+      - superset_home:/app/superset_home
 
   minio:
-    <<: *minio-common
+    image: quay.io/minio/minio
+    command: server --console-address ":9090" /mnt/data
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
     volumes:
       - minio-data:/mnt/data
     environment:
@@ -35,7 +80,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
-      - ./configs/clickhouse-config/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
+      - ./configs/clickhouse/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
     ulimits:
       nofile:
         soft: 262144
@@ -43,7 +88,7 @@ services:
 
   spark-master:
     build:
-      context: .
+      context: ./configs/spark/
       dockerfile: Dockerfile.spark
     environment:
       - SPARK_MODE=master
@@ -67,12 +112,12 @@ services:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
-      - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
-      - ./jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
-      - ./jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
-      - ./jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
-      - ./jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
+      - ./volumes/spark_jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
+      - ./volumes/spark_jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
+      - ./volumes/spark_jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
+      - ./volumes/spark_jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
+      - ./volumes/spark_jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
+      - ./volumes/spark_jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
 
       - ./data_pipeline:/opt/bitnami/spark/data_pipeline
       - ./tests:/opt/bitnami/spark/tests
@@ -91,21 +136,25 @@ services:
     volumes:
       - spark-logs:/opt/bitnami/spark/logs
 
-  dbeaver:
-    image: dbeaver/cloudbeaver:25.0.5
-    container_name: dbeaver
-    ports:
-      - "8978:8978"
-    environment:
-      - CB_SERVER_URL=http://dbeaver:8978
-      - CB_ADMIN_NAME=${CB_ADMIN_NAME}
-      - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD}
-    depends_on:
-      - clickhouse
-    volumes:
-      - ./dbeaver_data:/opt/cloudbeaver/workspace
+  # dbeaver:
+  #   image: dbeaver/cloudbeaver:25.0.5
+  #   container_name: dbeaver
+  #   ports:
+  #     - "8978:8978"
+  #   environment:
+  #     - CB_SERVER_URL=http://dbeaver:8978
+  #     - CB_ADMIN_NAME=${CB_ADMIN_NAME}
+  #     - CB_ADMIN_PASSWORD=${CB_ADMIN_PASSWORD}
+  #   depends_on:
+  #     - clickhouse
+  #   volumes:
+  #     - ./volumes/dbeaver_data:/opt/cloudbeaver/workspace
+
 volumes:
   clickhouse_data:
   clickhouse_logs:
   minio-data:
   spark-logs:
+  redis_data:
+  postgres_data:
+  superset_home:
