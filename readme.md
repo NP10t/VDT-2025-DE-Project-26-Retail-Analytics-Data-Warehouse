@@ -2,6 +2,9 @@
 ## VIETTEL DIGITAL TAILENT 2025 PROJECT
 ## DATA WAREHOUSE FOR ASSOCIATION RULE MINING
 
+![image](https://github.com/user-attachments/assets/d1f0d890-1833-4c77-b9ee-f8e4bae8b583)
+
+
 ### Create Environment (for test optional)
 ``` bash
 python3 -m venv venv
