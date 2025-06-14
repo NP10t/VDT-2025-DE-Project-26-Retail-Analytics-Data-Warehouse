@@ -280,3 +280,114 @@ FROM (
 GROUP BY product_1, product_2
 ORDER BY order_count DESC
 LIMIT 10;
+
+
+WITH order_products AS (
+    SELECT DISTINCT orderID, productID
+    FROM fact_sales
+    WHERE toYYYYMM(orderDate) = 202405
+)
+SELECT 
+    a.orderID as orderID1,
+    b.orderID as orderID2,
+    COUNT(*) as common_products,
+    arraySort(groupArray(a.productID)) as shared_products,
+    sipHash64(arrayStringConcat(arraySort(groupArray(a.productID)), ',')) AS shared_products_hash
+FROM order_products a
+INNER JOIN order_products b 
+    ON a.productID = b.productID 
+    AND a.orderID < b.orderID
+GROUP BY a.orderID, b.orderID
+HAVING common_products > 2
+ORDER BY shared_products_hash
+LIMIT 20;
+
+
+WITH order_products AS (
+    SELECT DISTINCT orderID, productID
+    FROM fact_sales
+    WHERE toYYYYMM(orderDate) = 202405
+), common_products as(
+SELECT 
+    a.orderID as orderID1,
+    b.orderID as orderID2,
+    COUNT(*) as common_products_cnt,
+    arraySort(groupArray(a.productID)) as shared_products
+FROM order_products a
+INNER JOIN order_products b 
+    ON a.productID = b.productID 
+    AND a.orderID < b.orderID
+GROUP BY a.orderID, b.orderID
+HAVING common_products_cnt > 1
+)
+select count(orderID1), shared_products
+from common_products
+group by shared_products
+
+
+
+
+WITH order_products AS (
+    SELECT DISTINCT orderID, productID
+    FROM fact_sales
+    WHERE toYYYYMM(orderDate) = 202405
+), 
+common_products AS (
+    SELECT 
+        a.orderID as orderID1,
+        b.orderID as orderID2,
+        COUNT(*) as common_products_cnt,
+        arraySort(groupArray(a.productID)) as shared_products
+    FROM order_products a
+    INNER JOIN order_products b 
+        ON a.productID = b.productID 
+        AND a.orderID < b.orderID
+    GROUP BY a.orderID, b.orderID
+    HAVING common_products_cnt > 1
+),
+-- Tạo các tập hợp con bằng cách sử dụng bit manipulation
+subsets AS (
+    SELECT 
+        orderID1,
+        orderID2,
+        shared_products,
+        range(1, toUInt32(pow(2, length(shared_products)))) as subset_indices
+    FROM common_products
+),
+expanded_subsets AS (
+    SELECT 
+        orderID1,
+        orderID2,
+        shared_products,
+        arrayJoin(subset_indices) as subset_idx,
+        -- Tạo subset dựa trên bit pattern
+        arrayFilter(
+            (x, i) -> bitTest(subset_idx, i - 1),
+            shared_products,
+            arrayEnumerate(shared_products)
+        ) as subset_products
+    FROM subsets
+),
+-- Kết hợp tập gốc và các tập con
+all_sets AS (
+    -- Tập gốc
+    SELECT orderID1,
+            orderID2,
+            shared_products as product_set
+    FROM common_products
+    
+    UNION ALL
+    
+    -- Các tập con
+    SELECT orderID1,
+            orderID2,
+            subset_products as product_set
+    FROM expanded_subsets
+    WHERE length(subset_products) > 0  -- Loại bỏ tập rỗng
+)
+SELECT 
+    count(*) as frequency,
+    product_set
+FROM all_sets
+GROUP BY product_set
+ORDER BY frequency DESC, length(product_set) DESC;
