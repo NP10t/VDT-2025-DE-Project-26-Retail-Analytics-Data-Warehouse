@@ -21,12 +21,6 @@ while ! nc -z clickhouse-server 8123; do
   sleep 1
 done
 
-echo "Installing ClickHouse driver..."
-pip install --no-cache-dir clickhouse-sqlalchemy==0.2.4
-
-echo "Installing additional dependencies..."
-pip install --no-cache-dir SQLAlchemy==1.4.53
-
 # Initialize Superset
 echo "Creating admin user..."
 superset fab create-admin \
@@ -38,7 +32,6 @@ superset fab create-admin \
 
 echo "Upgrading database..."
 superset db upgrade
-
 echo "Initializing Superset..."
 superset init
 

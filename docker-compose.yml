@@ -28,14 +28,14 @@ services:
   # Superset
   superset:
     build:
-      context: .
+      context: ./configs/superset/
       dockerfile: Dockerfile.superset
     container_name: superset
     restart: unless-stopped
     ports:
       - "8088:8088"
     environment:
-      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config_file.py
+      - SUPERSET_CONFIG_PATH=/app/pythonpath/superset_config.py
       - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
       - JWT_SECRET=${JWT_SECRET}
     depends_on:
@@ -46,25 +46,25 @@ services:
       clickhouse:
         condition: service_started
     volumes:
-      - ./configs/superset_config/superset_config_file.py:/app/pythonpath/superset_config_file.py
+      - ./configs/superset/superset_config.py:/app/pythonpath/superset_config.py
       - superset_home:/app/superset_home
 
-  # minio:
-  #   image: quay.io/minio/minio
-  #   command: server --console-address ":9090" /mnt/data
-  #   ports:
-  #     - "9000:9000"
-  #     - "9090:9090"
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-  #     interval: 30s
-  #     timeout: 20s
-  #     retries: 3
-  #   volumes:
-  #     - minio-data:/mnt/data
-  #   environment:
-  #     - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-  #     - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+  minio:
+    image: quay.io/minio/minio
+    command: server --console-address ":9090" /mnt/data
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    volumes:
+      - minio-data:/mnt/data
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
 
   clickhouse:
     image: clickhouse/clickhouse-server:25.4.2
@@ -80,61 +80,61 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
-      - ./configs/clickhouse-config/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
+      - ./configs/clickhouse/users.d/default-user.xml:/etc/clickhouse-server/users.d/default-user.xml
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
 
-  # spark-master:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.spark
-  #   environment:
-  #     - SPARK_MODE=master
-  #     - SPARK_MASTER_HOST=spark-master
-  #     - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+  spark-master:
+    build:
+      context: ./configs/spark/
+      dockerfile: Dockerfile.spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
 
-  #     - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-  #     - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
-  #     - MINIO_REGION=${MINIO_REGION}
-  #     - MINIO_SECURE=${MINIO_SECURE}
-  #     - MINIO_ENDPOINT=minio:9000
-  #     - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=${MINIO_REGION}
+      - MINIO_SECURE=${MINIO_SECURE}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_BUCKET=${MINIO_BUCKET}
 
-  #     - CLICKHOUSE_DB=${CLICKHOUSE_DB}
-  #     - CLICKHOUSE_USER=${CLICKHOUSE_USER}
-  #     - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-  #     - CLICKHOUSE_HOST=clickhouse-server
+      - CLICKHOUSE_DB=${CLICKHOUSE_DB}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_HOST=clickhouse-server
 
-  #     - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
-  #   ports:
-  #     - "8080:8080"
-  #     - "7077:7077"
-  #   volumes:
-  #     - ./jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
-  #     - ./jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
-  #     - ./jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
-  #     - ./jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
-  #     - ./jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
-  #     - ./jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
+      - PYTHONPATH=/opt/bitnami/spark/restaurant_data_processing:$PYTHONPATH
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./volumes/spark_jars/hadoop-aws-3.3.4.jar:/opt/bitnami/spark/jars/hadoop-aws-3.3.4.jar
+      - ./volumes/spark_jars/aws-java-sdk-bundle-1.12.533.jar:/opt/bitnami/spark/jars/aws-java-sdk-bundle-1.12.533.jar
+      - ./volumes/spark_jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar:/opt/bitnami/spark/jars/clickhouse-spark-runtime-3.4_2.12-0.8.0.jar
+      - ./volumes/spark_jars/clickhouse-jdbc-0.6.3.jar:/opt/bitnami/spark/jars/clickhouse-jdbc-0.6.3.jar
+      - ./volumes/spark_jars/httpcore-4.4.13.jar:/opt/bitnami/spark/jars/httpcore-4.4.13.jar
+      - ./volumes/spark_jars/httpclient-4.5.13.jar:/opt/bitnami/spark/jars/httpclient-4.5.13.jar
 
-  #     - ./data_pipeline:/opt/bitnami/spark/data_pipeline
-  #     - ./tests:/opt/bitnami/spark/tests
-  #     - ./data:/opt/bitnami/spark/data
+      - ./data_pipeline:/opt/bitnami/spark/data_pipeline
+      - ./tests:/opt/bitnami/spark/tests
+      - ./data:/opt/bitnami/spark/data
 
-  # spark-worker:
-  #   image: bitnami/spark:3.4.1
-  #   environment:
-  #     - SPARK_MODE=worker
-  #     - SPARK_MASTER_URL=spark://spark-master:7077
-  #     - SPARK_WORKER_MEMORY=512m
-  #     - SPARK_WORKER_CORES=1
-  #     - SPARK_CONF_DIR=/opt/bitnami/spark/conf
-  #   depends_on:
-  #     - spark-master
-  #   volumes:
-  #     - spark-logs:/opt/bitnami/spark/logs
+  spark-worker:
+    image: bitnami/spark:3.4.1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=512m
+      - SPARK_WORKER_CORES=1
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+    depends_on:
+      - spark-master
+    volumes:
+      - spark-logs:/opt/bitnami/spark/logs
 
   # dbeaver:
   #   image: dbeaver/cloudbeaver:25.0.5
@@ -148,7 +148,7 @@ services:
   #   depends_on:
   #     - clickhouse
   #   volumes:
-  #     - ./dbeaver_data:/opt/cloudbeaver/workspace
+  #     - ./volumes/dbeaver_data:/opt/cloudbeaver/workspace
 
 volumes:
   clickhouse_data:

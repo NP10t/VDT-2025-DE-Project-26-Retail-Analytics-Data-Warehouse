@@ -38,7 +38,7 @@ docker exec -it clickhouse-server clickhouse-client --user <username> --password
 ```
 or
 ``` bash
-bashdocker exec -it clickhouse-server clickhouse-client
+docker exec -it clickhouse-server clickhouse-client
 ```
 ### Load Data from Parquet to Silver Layer at ClickHouse
 ``` sql
