@@ -13,6 +13,7 @@
       <password><![CDATA[admin123]]></password>
       <quota>default</quota>
       <access_management>1</access_management>
+      <named_collection_control>1</named_collection_control>
     </admin>
   </users>
 </clickhouse>
