@@ -5,4 +5,5 @@ __pycache__
 data/raw/retail.csv
 volumes/spark_jars/*
 commands.sh
-configs/clickhouse/users.d/default-user.xml
+demo_1.sql
+demo_2.sql
