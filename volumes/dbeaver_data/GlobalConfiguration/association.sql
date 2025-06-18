@@ -131,7 +131,6 @@ WITH order_products AS (
     SELECT 
       arraySort(groupArrayMerge(product_set)) products
     FROM order_product_sets_3
-    -- where toYYYYMM(orderDate) = 202405
     where toYYYYMM(orderDate) BETWEEN 202405 and 202408
     group by orderID
     having countMerge(product_count) >= 2
@@ -150,7 +149,7 @@ WITH order_products AS (
             )
         ) as combo
 GROUP BY combo_size, combo
-HAVING support_count >= 2  -- Xuất hiện ít nhất 2 lần
+HAVING support_count >= 2 
 ORDER BY support_count DESC, combo_size DESC
 LIMIT 5;
 
@@ -159,7 +158,6 @@ WITH order_products AS (
     SELECT 
       arraySort(product_set) products
     FROM order_product_sets_2
-    -- where toYYYYMM(orderDate) = 202405
     where toYYYYMM(orderDate) BETWEEN 202405 and 202408
     having product_count >= 2
 )
@@ -177,7 +175,7 @@ WITH order_products AS (
             )
         ) as combo
 GROUP BY combo_size, combo
-HAVING support_count >= 2  -- Xuất hiện ít nhất 2 lần
+HAVING support_count >= 2
 ORDER BY support_count DESC, combo_size DESC
 LIMIT 5;
 
@@ -187,8 +185,6 @@ WITH order_products AS (
         fs.orderID, 
         arraySort(groupArray(productID)) as products
     FROM fact_sales fs
-    -- JOIN dim_products dp ON fs.productID = dp.productID
-    -- WHERE toYYYYMM(fs.orderDate) = 202405
     where toYYYYMM(orderDate) BETWEEN 202405 and 202408
     GROUP BY fs.orderID
     HAVING length(products) >= 2
@@ -207,7 +203,7 @@ WITH order_products AS (
             )
         ) as combo
 GROUP BY combo_size, combo
-HAVING support_count >= 2  -- Xuất hiện ít nhất 2 lần
+HAVING support_count >= 2 
 ORDER BY support_count DESC, combo_size DESC
 LIMIT 5;
 
