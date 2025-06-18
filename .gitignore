@@ -1,7 +1,8 @@
 .env
 venv
+.venv
 __pycache__
 data/raw/retail.csv
 volumes/spark_jars/*
 commands.sh
-configs/clickhouse-config/users.d/default-user.xml
+configs/clickhouse/users.d/default-user.xml

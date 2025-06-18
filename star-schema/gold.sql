@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales
     productID UInt32,
     customerID String,
     quantity UInt32,
-    salesamount Float64
+    salesamount Float64,
+    productGroupKey String
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(orderDate)
@@ -44,17 +45,47 @@ ENGINE = MergeTree()
 PARTITION BY toYYYYMM(orderDate)
 ORDER BY orderDate;
 
+CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DB}.dim_product_group
+(
+    productGroupKey String,
+    productGroupID String,
+    productGroupName String
+)
+ENGINE = ReplacingMergeTree()
+ORDER BY productGroupKey;
+
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.dim_product_group_mv
+TO ${CLICKHOUSE_DB}.dim_product_group
+AS
+SELECT DISTINCT
+    hex(sipHash128(productGroupID)) AS productGroupKey,
+    arrayStringConcat(arraySort(groupArray(productID)), '-') AS productGroupID,
+    arrayStringConcat(arraySort(groupArray(productName)), '-') AS productGroupName
+FROM ${CLICKHOUSE_DB}.silver
+GROUP BY orderID;
+
+
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.fact_sales_mv
 TO ${CLICKHOUSE_DB}.fact_sales
 AS
+WITH product_groups AS (
+    SELECT
+        orderID,
+        hex(sipHash128(arrayStringConcat(arraySort(groupArray(productID)), '-'))) AS productGroupKey
+    FROM ${CLICKHOUSE_DB}.silver
+    GROUP BY orderID
+)
 SELECT
-    orderID,
-    orderDate,
-    productID,
-    customerID,
-    quantity,
-    salesamount
-FROM ${CLICKHOUSE_DB}.silver;
+    t.orderID,
+    t.orderDate,
+    t.productID,
+    t.customerID,
+    t.quantity,
+    t.salesamount,
+    pg.productGroupKey,
+FROM ${CLICKHOUSE_DB}.silver t
+INNER JOIN product_groups pg ON t.orderID = pg.orderID;
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS ${CLICKHOUSE_DB}.dim_products_mv
 TO ${CLICKHOUSE_DB}.dim_products
