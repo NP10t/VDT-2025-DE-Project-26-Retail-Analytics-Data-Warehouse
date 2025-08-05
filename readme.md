@@ -29,6 +29,17 @@ Run spark with multiple worker:
 ```bash
 docker-compose up --scale spark-worker=2
 ```
+
+### 📥 Add Raw Data
+
+Download the sample dataset [`retails.csv`](https://drive.google.com/file/d/1BulCtF1drI7Sen0FzD5lyFOyiW2vGdgr/view?usp=sharing)
+
+Place it in the `data/raw/` directory:
+
+```bash
+mkdir -p data/raw
+```
+
 ### Ingest to MinIO, Spark Extract, Transform, Validate, Load to Parquet files
 ``` bash
 bash run_etl.sh
