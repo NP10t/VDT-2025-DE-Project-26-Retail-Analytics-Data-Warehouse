@@ -27,6 +27,8 @@ dos2unix ./configs/superset/superset_init.sh
 dos2unix .run_etl.sh
 dos2unix .download_spark_dependencies.sh
 ```
+
+Download Java .jar libraries
 ```
 mkdir ./volumes/spark_jars
 bash download_spark_dependencies.sh
