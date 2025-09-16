@@ -21,6 +21,40 @@ venv\Scripts\activate
 ```
 
 ### Initilize all the services
+Convert the line endings of these files from Windows style (CRLF) to Unix/Linux style (LF).
+```
+dos2unix ./configs/superset/superset_init.sh
+dos2unix .run_etl.sh
+dos2unix .download_spark_dependencies.sh
+```
+```
+mkdir ./volumes/spark_jars
+bash download_spark_dependencies.sh
+```
+
+Configuration
+Add `<named_collection_control>1</named_collection_control>` into `configs/clickhouse-config/users.d/default-user.xml`:
+``` xml
+<clickhouse>
+  <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->
+  <users>
+    <!-- Remove default user -->
+    <default remove="remove">
+    </default>
+    <admin>
+      <profile>default</profile>
+      <networks>
+        <ip>::/0</ip>
+      </networks>
+      <password><![CDATA[********]]></password>
+      <quota>default</quota>
+      <access_management>1</access_management>
+      <named_collection_control>1</named_collection_control>
+    </admin>
+  </users>
+</clickhouse>
+```
+
 ```bash
 docker-compose up -d
 ```
@@ -65,26 +99,4 @@ FROM s3(
     url = 'http://minio:9000/vdt-data/cleaned_raw/retail_cleaned/*.parquet',
     format = 'Parquet'
 );
-```
-Configuration
-Add `<named_collection_control>1</named_collection_control>` into `configs/clickhouse-config/users.d`:
-``` xml
-<clickhouse>
-  <!-- Docs: <https://clickhouse.com/docs/operations/settings/settings_users/> -->
-  <users>
-    <!-- Remove default user -->
-    <default remove="remove">
-    </default>
-    <admin>
-      <profile>default</profile>
-      <networks>
-        <ip>::/0</ip>
-      </networks>
-      <password><![CDATA[********]]></password>
-      <quota>default</quota>
-      <access_management>1</access_management>
-      <named_collection_control>1</named_collection_control>
-    </admin>
-  </users>
-</clickhouse>
 ```
