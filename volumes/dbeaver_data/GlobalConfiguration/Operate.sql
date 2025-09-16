@@ -1,4 +1,0 @@
-DROP DATABASE vdt;
-USE default;
-CREATE DATABASE vdt;
-USE vdt;

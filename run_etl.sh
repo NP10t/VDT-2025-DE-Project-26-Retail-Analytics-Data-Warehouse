@@ -20,7 +20,7 @@ echo "▶️  Step 2: Extracting, transforming, validating, and save as parquet 
 #     --deploy-mode client \
 #     data_pipeline/run_etl.py
 
-docker exec project_viettel-spark-master-1 spark-submit \
+docker exec vdt-2025-de-project-26-retail-analytics-data-warehouse-spark-master-1 spark-submit \
   --master spark://spark-master:7077 \
   --executor-memory 512m \
   --executor-cores 1 \
