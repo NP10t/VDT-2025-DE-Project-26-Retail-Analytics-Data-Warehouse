@@ -22,14 +22,15 @@ venv\Scripts\activate
 
 ### Initilize all the services
 Convert the line endings of these files from Windows style (CRLF) to Unix/Linux style (LF).
-```
+```bash
 dos2unix ./configs/superset/superset_init.sh
 dos2unix .run_etl.sh
 dos2unix .download_spark_dependencies.sh
+dos2unix .env
 ```
 
 Download Java .jar libraries
-```
+```bash
 mkdir ./volumes/spark_jars
 bash download_spark_dependencies.sh
 ```
@@ -80,10 +81,7 @@ mkdir -p data/raw
 ``` bash
 bash run_etl.sh
 ```
-### Create Database
-``` bash
-envsubst < init.sql | docker exec -i clickhouse-server clickhouse-client
-```
+
 ### Connect to ClickHouse
 ``` bash
 docker exec -it clickhouse-server clickhouse-client --user <username> --password <password>
@@ -92,6 +90,32 @@ or
 ``` bash
 docker exec -it clickhouse-server clickhouse-client
 ```
+
+```sql
+CREATE DATABASE VDT
+```
+
+### Create Database
+``` bash
+export $(cat .env | xargs)
+
+(envsubst < star-schema/silver.sql; envsubst < star-schema/gold.sql; envsubst < star-schema/pre-aggregate.sql) | docker exec -i clickhouse-server clickhouse-client
+
+(envsubst < star-schema/gold_itemset.sql;) | docker exec -i clickhouse-server clickhouse-client
+```
+
+```sql
+docker exec -it clickhouse-server clickhouse-client
+
+INSERT INTO silver
+SELECT *
+FROM s3(
+    minio_config,
+    url = 'http://minio:9000/vdt-data/cleaned_raw/retail_cleaned/*.parquet',
+    format = 'Parquet'
+);
+```
+
 ### Load Data from Parquet to Silver Layer at ClickHouse
 ``` sql
 INSERT INTO silver

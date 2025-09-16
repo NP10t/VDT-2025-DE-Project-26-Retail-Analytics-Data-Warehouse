@@ -1,5 +1,4 @@
-use vdt;
-
+use ${CLICKHOUSE_DB};
 
 CREATE TABLE IF NOT EXISTS fact_itemset (
     -- Itemset information
